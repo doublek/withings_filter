@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Refer to file named COPYRIGHT in the directory where you found this file for
+# copyright information
 
 import sys
 import urllib, hashlib
