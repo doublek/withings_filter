@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 
+import sys
 import urllib, hashlib
 import json
+import hashlib
 
 withings_base_url = 'http://wbsapi.withings.net/'
 withings_once = withings_base_url + 'once?action=get'
 withings_geturllist = withings_base_url + 'account?action=getuserslist&email=%s&hash=%s'
 
-# XXX Lazy me :D
-USER_EMAIL = 'karthikkrishnan.r@gmail.com'
-# Hash calculated as follows:
-# import hashlib
-# password = 'password'
-# hashlib.md5(password).hexdigest()
-USER_PASSWORD_HASH = 'e9ec45c353659b99aa5586d96d32a466'
+def calculate_password_hash(password):
+    '''Calculate the password md5 hash.'''
+
+    return hashlib.md5(password).hexdigest()
 
 def get_once_magic_string():
     '''
+    Get the once magic string that the withings API required. This magic
+    string will be used in all (or atleast most) subsequent requests.
     '''
     once_handle = urllib.urlopen(withings_once)
     once_data = once_handle.read()
@@ -38,11 +39,45 @@ def authenticate_user(email, password_hash):
     print "URL used is: %s" % url
     auth_handle = urllib.urlopen(url)
     auth_data = auth_handle.read()
-    print auth_data
+
+    json_auth_data = json.loads(auth_data)
+    print json.dumps(json_auth_data, indent=4)
+
+    if json_auth_data['status'] != 0:
+        print 'Error when contacting withings... Exiting...'
+        return
+
+    user_id = json_auth_data['body']['users'][0]['id']
+    public_key = json_auth_data['body']['users'][0]['publickey']
+    short_name = json_auth_data['body']['users'][0]['shortname'] 
+
+    return user_id, public_key, short_name
 
 
 def main():
-    authenticate_user(USER_EMAIL, USER_PASSWORD_HASH)
+    if len(sys.argv) != 3:
+        print '''Error: Enough arguments not supplied..
+Usage: withings_filter.py <username> <password>'''
+        return
+
+    password = sys.argv.pop()
+    password_hash = calculate_password_hash(password)
+
+    email = sys.argv.pop()
+
+    print 'Processing for %s with password hash %s' % (
+        email,
+        password_hash
+    )
+
+    user_id, public_key, short_name = authenticate_user(email, password_hash)
+
+    print 'UserID for %s is %d and publickey is %s' % (
+        short_name,
+        user_id,
+        public_key,
+    )
+
 
 if __name__ == '__main__':
     main()
